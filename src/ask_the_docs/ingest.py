@@ -92,3 +92,12 @@ def recursif_token_chunker(text: str, chunk_size: int, separators: list[str]= SE
     if current_chunks:
         chunks.extend(recursif_token_chunker(text=current_chunks,separators=smaller_separator, chunk_size=chunk_size))
     return chunks
+
+
+def clean(text: str) -> str:
+    if text.startswith("---"):
+        text = text.split("---", 2)[-1]
+    return re.sub(r"\{\{<.*?>\}\}", "", text)
+    
+def read() -> dict[str, str]:
+    return {str(path): clean(path.read_text(encoding="utf-8")) for path in Path("data").rglob("*.md")}
