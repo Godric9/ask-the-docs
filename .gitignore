@@ -1,3 +1,11 @@
+# Qdrant local storage (binary index, not source)
+qdrant_storage/
+
+# Corpus: licence Datadog docs floue pour le contenu (texte), pas pour le code du site.
+# Le README explique comment régénérer data/ à partir du commit pinné.
+data/*
+!data/README.md
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
