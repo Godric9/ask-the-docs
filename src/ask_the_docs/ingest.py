@@ -1,7 +1,9 @@
 import re
+import numpy as np
 
 from pathlib import Path
 from fastembed import TextEmbedding
+
 
 
 def fix_size_chunker(text: str, size : int, overlap : int = 0) -> list[str]:
@@ -49,12 +51,28 @@ def combine_sentences(sentences, buffer_size=1):
     return sentences
 
 
-def semantic_chunker(text : str) -> list[str]:
-    single_sentences_list = re.split(r'(?<=[.?!])\s+', text)
-    sentences = [{'sentence': x, 'index' : i} for i, x in enumerate(single_sentences_list)]
+def similarite_cosinus(v1, v2) -> float:
+    return np.dot(v1, v2) / (np.linalg.norm(v1) * np.linalg.norm(v2))
 
-    sentences = combine_sentences(sentences=sentences)
 
+def semantic_chunker(text: str, modele: TextEmbedding, seuil_percentile: float = 95) -> list[str]:
+    phrases = text.split(". ")
+    vectors = list(modele.embed(phrases))
+
+    similarites = [similarite_cosinus(vectors[i], vectors[i + 1]) for i in range(len(vectors) - 1)]
+    seuil = np.percentile(similarites, 100 - seuil_percentile)
+
+    chunks = []
+    chunk_courant = phrases[0]
+    for i in range(len(similarites)):
+        if similarites[i] >= seuil:
+            chunk_courant += ". " + phrases[i + 1]
+        else:
+            chunks.append(chunk_courant)
+            chunk_courant = phrases[i + 1]
+    chunks.append(chunk_courant)
+    return chunks
+        
 
 SEPARATORS = ["\n\n", "\n", ".", "?", "!", " ", ""]
 
@@ -86,7 +104,7 @@ def recursif_token_chunker(text: str, chunk_size: int, separators: list[str]= SE
             current_chunks = segment
         else:
             if current_chunks:
-                chunks.extend(recursif_token_chunker(text=current_chunks,separators=smaller_separator, chunk_size=chunk_size))
+                chunks.extend(recursif_token_chunker(text=current_chunks + sep, separators=smaller_separator, chunk_size=chunk_size))
             current_chunks = split
 
     if current_chunks:
