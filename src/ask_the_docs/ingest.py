@@ -8,8 +8,7 @@ import numpy as np
 from qdrant_client import QdrantClient
 from qdrant_client.models import Distance, PointStruct, VectorParams
 
-COLLECTION = "docs"
-MODELE_NAME = "BAAI/bge-small-en-v1.5"
+from .config import COLLECTION, MODEL_NAME
 
 def get_client() -> QdrantClient:
     return QdrantClient(host="localhost", port=6333)
@@ -129,7 +128,7 @@ def read() -> dict[str, str]:
     }
 
 def ingest() -> None:
-    modele = TextEmbedding(model_name=MODELE_NAME)
+    modele = TextEmbedding(model_name=MODEL_NAME)
     client = get_client()
     ensure_collection(client, dim=384)
 
