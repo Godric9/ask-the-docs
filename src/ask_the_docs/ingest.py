@@ -57,6 +57,9 @@ def similarite_cosinus(v1, v2) -> float:
 
 def semantic_chunker(text: str, modele: TextEmbedding, seuil_percentile: float = 95) -> list[str]:
     phrases = text.split(". ")
+    if len(phrases) <= 1:
+        return phrases
+    
     vectors = list(modele.embed(phrases))
 
     similarites = [similarite_cosinus(vectors[i], vectors[i + 1]) for i in range(len(vectors) - 1)]
