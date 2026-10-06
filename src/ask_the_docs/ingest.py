@@ -10,8 +10,10 @@ from qdrant_client.models import Distance, PointStruct, VectorParams
 
 from .config import COLLECTION, MODEL_NAME
 
+
 def get_client() -> QdrantClient:
     return QdrantClient(host="localhost", port=6333)
+
 
 def ensure_collection(client: QdrantClient, dim: int) -> None:
     if not client.collection_exists(COLLECTION):
@@ -127,6 +129,7 @@ def read() -> dict[str, str]:
         for path in Path("data").rglob("*.md")
     }
 
+
 def ingest() -> None:
     modele = TextEmbedding(model_name=MODEL_NAME)
     client = get_client()
@@ -139,9 +142,17 @@ def ingest() -> None:
         vecteurs = list(modele.embed(chunks))
         for chunk_id, (chunk, vecteur) in enumerate(zip(chunks, vecteurs)):
             point_id = str(uuid.uuid5(uuid.NAMESPACE_URL, f"{source}:{chunk_id}"))
-            points.append(PointStruct(id=point_id, vector=vecteur, payload={
-                "source": source, "chunk_id": chunk_id, "text": chunk,
-            }))
+            points.append(
+                PointStruct(
+                    id=point_id,
+                    vector=vecteur,
+                    payload={
+                        "source": source,
+                        "chunk_id": chunk_id,
+                        "text": chunk,
+                    },
+                )
+            )
 
     client.upsert(collection_name=COLLECTION, points=points)
     print(f"Ingested {len(points)} chunks from {len(reads)} files.")
