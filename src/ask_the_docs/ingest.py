@@ -1,10 +1,9 @@
 import re
-from pathlib import Path
-import hashlib
 import uuid
+from pathlib import Path
 
-from fastembed import TextEmbedding
 import numpy as np
+from fastembed import TextEmbedding
 from qdrant_client import QdrantClient
 from qdrant_client.models import Distance, PointStruct, VectorParams
 

@@ -1,14 +1,15 @@
-import re
 import math
+import re
+from collections import defaultdict
 from functools import lru_cache
 
 from fastembed import TextEmbedding
 from qdrant_client import QdrantClient
 from rank_bm25 import BM25Okapi
 from sentence_transformers import CrossEncoder
-from collections import defaultdict
 
-from config import COLLECTION
+from .config import COLLECTION
+
 
 def sigmoid(x):
     return 1 / (1 + math.exp(-x))
