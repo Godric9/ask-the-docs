@@ -1,8 +1,25 @@
 import re
-import numpy as np
-
 from pathlib import Path
+import hashlib
+import uuid
+
 from fastembed import TextEmbedding
+import numpy as np
+from qdrant_client import QdrantClient
+from qdrant_client.models import Distance, PointStruct, VectorParams
+
+COLLECTION = "docs"
+MODELE_NAME = "BAAI/bge-small-en-v1.5"
+
+def get_client() -> QdrantClient:
+    return QdrantClient(host="localhost", port=6333)
+
+def ensure_collection(client: QdrantClient, dim: int) -> None:
+    if not client.collection_exists(COLLECTION):
+        client.create_collection(
+            collection_name=COLLECTION,
+            vectors_config=VectorParams(size=dim, distance=Distance.COSINE),
+        )
 
 
 def fix_size_chunker(text: str, size: int, overlap: int = 0) -> list[str]:
@@ -110,3 +127,22 @@ def read() -> dict[str, str]:
         str(path): clean(path.read_text(encoding="utf-8"))
         for path in Path("data").rglob("*.md")
     }
+
+def ingest() -> None:
+    modele = TextEmbedding(model_name=MODELE_NAME)
+    client = get_client()
+    ensure_collection(client, dim=384)
+
+    points = []
+    reads = read()
+    for source, texte in reads.items():
+        chunks = recursif_token_chunker(texte, chunk_size=500)
+        vecteurs = list(modele.embed(chunks))
+        for chunk_id, (chunk, vecteur) in enumerate(zip(chunks, vecteurs)):
+            point_id = str(uuid.uuid5(uuid.NAMESPACE_URL, f"{source}:{chunk_id}"))
+            points.append(PointStruct(id=point_id, vector=vecteur, payload={
+                "source": source, "chunk_id": chunk_id, "text": chunk,
+            }))
+
+    client.upsert(collection_name=COLLECTION, points=points)
+    print(f"Ingested {len(points)} chunks from {len(reads)} files.")
