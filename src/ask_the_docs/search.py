@@ -1,17 +1,22 @@
 import re
+import math
 from functools import lru_cache
 
 from fastembed import TextEmbedding
 from qdrant_client import QdrantClient
 from rank_bm25 import BM25Okapi
+from sentence_transformers import CrossEncoder
+from collections import defaultdict
 
-from .config import COLLECTION
+from config import COLLECTION
 
+def sigmoid(x):
+    return 1 / (1 + math.exp(-x))
 
 def dense_search(
-    question: str, client: QdrantClient, modele: TextEmbedding, k: int = 5
+    query: str, client: QdrantClient, model: TextEmbedding, k: int = 5
 ):
-    vecteur = list(modele.embed([question]))[0]
+    vecteur = list(model.embed([query]))[0]
     return client.query_points(
         collection_name=COLLECTION, query=vecteur, limit=k
     ).points
@@ -34,14 +39,14 @@ def _index(client: QdrantClient):
     return BM25Okapi([tokeniser(p.payload["text"]) for p in points]), points
 
 
-def bm25_search(question: str, client: QdrantClient, k: int = 5):
+def bm25_search(query: str, client: QdrantClient, k: int = 5):
     bm25, points = _index(client)
-    scores = bm25.get_scores(tokeniser(question))
+    scores = bm25.get_scores(tokeniser(query))
     return [points[i] for i in scores.argsort()[-k:][::-1] if scores[i] > 0]
 
 
 def fusion_rrf(liste_dense: list, liste_bm25: list, k: int = 60) -> list:
-    scores : dict = {}
+    scores : dict = defaultdict(float)
     par_id : dict = {}
     for liste in (liste_dense, liste_bm25):
         for rang, point in enumerate(liste, start=1):
@@ -50,5 +55,10 @@ def fusion_rrf(liste_dense: list, liste_bm25: list, k: int = 60) -> list:
     return [par_id[i] for i in sorted(scores, key=scores.get, reverse=True)]
 
 
-def hybrid_search(question, client, modele, k=5, n=20):
-    return fusion_rrf(dense_search(question, client, modele, n), bm25_search(question, client, n))[:k]
+def hybrid_search(query, client, modele, k=5, n=20):
+    return fusion_rrf(dense_search(query, client, modele, n), bm25_search(query, client, n))[:k]
+
+def rerank(query: str, candidats: list, cross_encoder: CrossEncoder, k: int = 5) -> list:
+    paires = [(query, candidat.payload["text"]) for candidat in candidats]
+    scores = cross_encoder.predict(paires)
+    return sorted(zip(candidats, scores), key=lambda paire: paire[1], reverse=True)[:k]
