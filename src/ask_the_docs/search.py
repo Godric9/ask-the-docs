@@ -14,9 +14,8 @@ from .config import COLLECTION
 def sigmoid(x):
     return 1 / (1 + math.exp(-x))
 
-def dense_search(
-    query: str, client: QdrantClient, model: TextEmbedding, k: int = 5
-):
+
+def dense_search(query: str, client: QdrantClient, model: TextEmbedding, k: int = 5):
     vecteur = list(model.embed([query]))[0]
     return client.query_points(
         collection_name=COLLECTION, query=vecteur, limit=k
@@ -47,8 +46,8 @@ def bm25_search(query: str, client: QdrantClient, k: int = 5):
 
 
 def fusion_rrf(liste_dense: list, liste_bm25: list, k: int = 60) -> list:
-    scores : dict = defaultdict(float)
-    par_id : dict = {}
+    scores: dict = defaultdict(float)
+    par_id: dict = {}
     for liste in (liste_dense, liste_bm25):
         for rang, point in enumerate(liste, start=1):
             par_id[point.id] = point
@@ -57,9 +56,14 @@ def fusion_rrf(liste_dense: list, liste_bm25: list, k: int = 60) -> list:
 
 
 def hybrid_search(query, client, modele, k=5, n=20):
-    return fusion_rrf(dense_search(query, client, modele, n), bm25_search(query, client, n))[:k]
+    return fusion_rrf(
+        dense_search(query, client, modele, n), bm25_search(query, client, n)
+    )[:k]
 
-def rerank(query: str, candidats: list, cross_encoder: CrossEncoder, k: int = 5) -> list:
+
+def rerank(
+    query: str, candidats: list, cross_encoder: CrossEncoder, k: int = 5
+) -> list:
     paires = [(query, candidat.payload["text"]) for candidat in candidats]
     scores = cross_encoder.predict(paires)
     return sorted(zip(candidats, scores), key=lambda paire: paire[1], reverse=True)[:k]
