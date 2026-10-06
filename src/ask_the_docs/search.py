@@ -38,3 +38,17 @@ def bm25_search(question: str, client: QdrantClient, k: int = 5):
     bm25, points = _index(client)
     scores = bm25.get_scores(tokeniser(question))
     return [points[i] for i in scores.argsort()[-k:][::-1] if scores[i] > 0]
+
+
+def fusion_rrf(liste_dense: list, liste_bm25: list, k: int = 60) -> list:
+    scores : dict = {}
+    par_id : dict = {}
+    for liste in (liste_dense, liste_bm25):
+        for rang, point in enumerate(liste, start=1):
+            par_id[point.id] = point
+            scores[point.id] += 1 / (k + rang)
+    return [par_id[i] for i in sorted(scores, key=scores.get, reverse=True)]
+
+
+def hybrid_search(question, client, modele, k=5, n=20):
+    return fusion_rrf(dense_search(question, client, modele, n), bm25_search(question, client, n))[:k]
