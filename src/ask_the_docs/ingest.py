@@ -41,13 +41,13 @@ def similarite_cosinus(v1, v2) -> float:
 
 
 def semantic_chunker(
-    text: str, modele: TextEmbedding, seuil_percentile: float = 95
+    text: str, model: TextEmbedding, seuil_percentile: float = 95
 ) -> list[str]:
     phrases = text.split(". ")
     if len(phrases) <= 1:
         return phrases
 
-    vectors = list(modele.embed(phrases))
+    vectors = list(model.embed(phrases))
 
     similarites = [
         similarite_cosinus(vectors[i], vectors[i + 1]) for i in range(len(vectors) - 1)
@@ -130,7 +130,7 @@ def read() -> dict[str, str]:
 
 
 def ingest() -> None:
-    modele = TextEmbedding(model_name=MODEL_NAME)
+    model = TextEmbedding(model_name=MODEL_NAME)
     client = get_client()
     ensure_collection(client, dim=384)
 
@@ -138,7 +138,7 @@ def ingest() -> None:
     reads = read()
     for source, texte in reads.items():
         chunks = recursif_token_chunker(texte, chunk_size=500)
-        vecteurs = list(modele.embed(chunks))
+        vecteurs = list(model.embed(chunks))
         for chunk_id, (chunk, vecteur) in enumerate(zip(chunks, vecteurs)):
             point_id = str(uuid.uuid5(uuid.NAMESPACE_URL, f"{source}:{chunk_id}"))
             points.append(
