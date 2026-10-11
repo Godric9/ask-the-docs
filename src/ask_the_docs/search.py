@@ -16,7 +16,7 @@ def sigmoid(x):
 
 
 def dense_search(query: str, client: QdrantClient, model: TextEmbedding, k: int = 5):
-    vecteur = list(model.embed([query]))[0]
+    vecteur = next(iter(model.embed([query])))
     return client.query_points(
         collection_name=COLLECTION, query=vecteur, limit=k
     ).points
